@@ -1,17 +1,35 @@
-from xml.etree.ElementTree import ElementTree
-from sys import argv
-from datetime import datetime
-import time
-import json
-import gzip
+from sys import argv, exit
+import xml.parsers.expat
 
-f = gzip.open('484.osc.gz', 'rb')
-file_content = f.read()
+create = False
+refNodes = {}
+nodes = []
+ways = []
+f = open('nodes.datamap', 'w')
 
-tree = ElementTree()
+def start_element(name, attrs):
+    global create
+    global nodes
+    global ways
+    if name == 'create':
+        create = True
+    if create and name == 'node':
+        nodes.append(attrs['lat'] + ',' + attrs['lon'])
+        refNodes[attrs['id']] = {
+            'lat': attrs['lat'],
+            'lon': attrs['lon']
+        }
 
-#tree.parse(file_content)
+def end_element(name):
+    global create
+    create = (name == 'create')
+    if name == 'osmChange':
+        # write all nodes to file
+        global nodes
+        f.write('\n'.join(nodes))
 
-print file_content
+p = xml.parsers.expat.ParserCreate()
+p.StartElementHandler = start_element
+p.EndElementHandler = end_element
 
-f.close()
+p.ParseFile(open(argv[1], 'r'))
